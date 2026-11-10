@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PFPC 레시피 보드</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* 레이아웃: 위에 PFPC 1대의 현재 레시피를 크게, 아래에 이폴 4대가 그 레시피와 맞는지 판정. 공정 단말기 같은 차분한 산업용 화면 */
+:root{
+  --bg:#eef1f3; --panel:#ffffff; --line:#d3d9de; --fg:#1b252d; --muted:#5d6b76;
+  --accent:#0d6e8a; --accent-bg:#e2f0f4; --ok:#1f7a45; --ok-bg:#e3f2e8; --wait:#9a5b00; --wait-bg:#fbf0dc; --stop:#7d848a; --stop-bg:#eceeef;
+  --sans:"IBM Plex Sans KR",system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12181d; --panel:#1a2229; --line:#2e3a43; --fg:#e4eaee; --muted:#93a2ad;
+  --accent:#4fb3d1; --accent-bg:#16303a; --ok:#5fcf8c; --ok-bg:#183327; --wait:#e9ad4f; --wait-bg:#33280f; --stop:#8c969d; --stop-bg:#232c33; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12181d; --panel:#1a2229; --line:#2e3a43; --fg:#e4eaee; --muted:#93a2ad;
+  --accent:#4fb3d1; --accent-bg:#16303a; --ok:#5fcf8c; --ok-bg:#183327; --wait:#e9ad4f; --wait-bg:#33280f; --stop:#8c969d; --stop-bg:#232c33; color-scheme:dark}
+html,body{background:var(--bg);color:var(--fg);margin:0}
+*{box-sizing:border-box}
+body{font-family:var(--sans);font-size:15px;line-height:1.55;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:980px;margin:0 auto;display:grid;gap:18px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:10px}
+h1{font-size:22px;margin:0;text-wrap:balance}
+h2{font-size:13px;letter-spacing:.06em;color:var(--muted);font-weight:500;margin:0}
+.sub{color:var(--muted);font-size:13px;margin:2px 0 0}
+.tag{font-family:var(--mono);font-size:12px;color:var(--muted);border:1px dashed var(--line);padding:3px 8px;border-radius:4px;font-variant-numeric:tabular-nums}
+.pfpc{background:var(--accent-bg);border:1px solid var(--accent);border-radius:8px;padding:18px 20px;display:grid;grid-template-columns:1fr auto;gap:6px 20px;align-items:end}
+.pfpc .name{font-family:var(--mono);font-weight:600}
+.pfpc .rcp{font-family:var(--mono);font-size:44px;font-weight:600;line-height:1.1;color:var(--accent);letter-spacing:.02em}
+.pfpc .meta{font-size:14px;color:var(--fg);font-variant-numeric:tabular-nums}
+.pfpc .side{text-align:right;display:grid;gap:6px;justify-items:end}
+.advice{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 16px;font-size:15px}
+.advice b{font-family:var(--mono);color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.eq{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px;display:grid;gap:8px;min-width:0}
+.eq.mine{outline:2px solid var(--fg);outline-offset:-2px}
+.eq-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.eq-name{font-family:var(--mono);font-weight:600;font-size:14px}
+.me{font-size:11px;color:var(--muted)}
+.pill{font-size:12px;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.wait{background:var(--wait-bg);color:var(--wait)}
+.pill.pm{background:var(--stop-bg);color:var(--stop)}
+.rcp{font-family:var(--mono);font-size:24px;font-weight:600}
+.meta{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.todo{font-size:13px;border-top:1px solid var(--line);padding-top:8px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+select,button{font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:6px 10px}
+button{cursor:pointer}
+button:hover{border-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.foot{font-size:12px;color:var(--muted);max-width:65ch}
+@media (max-width:520px){.pfpc{grid-template-columns:1fr}.pfpc .side{text-align:left;justify-items:start}.pfpc .rcp{font-size:36px}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>PFPC 레시피 보드</h1>
+      <p class="sub">300mm 이폴 자리에서 다음 공정 PFPC가 지금 어떤 레시피로 도는지 확인하고, 이폴 생산 레시피를 맞춥니다</p>
+    </div>
+    <span class="tag" id="clock">가상 데이터 · 갱신 --:--:--</span>
+  </header>
+
+  <section class="pfpc" aria-live="polite">
+    <div>
+      <h2>다음 공정 · <span class="name">PFPC</span></h2>
+      <div class="rcp" id="pRcp">—</div>
+    </div>
+    <div class="side">
+      <span class="pill" id="pState">—</span>
+      <span class="meta" id="pMeta">—</span>
+      <span class="meta" id="pCap">—</span>
+    </div>
+  </section>
+
+  <div class="advice" id="advice" aria-live="polite">계산 중</div>
+
+  <section class="row">
+    <label for="myEq">내 장비</label>
+    <select id="myEq"></select>
+  </section>
+
+  <section class="grid" id="grid" aria-label="이폴 장비 4대"></section>
+
+  <div class="row">
+    <button id="tick" type="button">시간 흘려 보기</button>
+    <span class="foot">장비 이름과 레시피 이름은 모두 가상입니다. 실제 공장에서는 PFPC 장비나 MES에서 현재 레시피를 받아 같은 화면을 채웁니다. 상태는 20초마다 자동으로 바뀝니다.</span>
+  </div>
+</div>
+
+<script>
+const RECIPES=["R300-A","R300-B","R300-C","R300-D"];
+const pfpc={recipe:"R300-B",state:"run",left:14};
+const epol=[
+  {name:"EPOL-01",recipe:"R300-B",left:9},
+  {name:"EPOL-02",recipe:"R300-A",left:16},
+  {name:"EPOL-03",recipe:"R300-B",left:22},
+  {name:"EPOL-04",recipe:"R300-D",left:5},
+];
+const $=id=>document.getElementById(id);
+const sel=$("myEq");
+epol.forEach(e=>{const o=document.createElement("option");o.value=e.name;o.textContent=e.name;sel.appendChild(o)});
+try{const s=localStorage.getItem("myEq");if(s&&epol.some(e=>e.name===s))sel.value=s}catch(e){}
+sel.addEventListener("change",()=>{try{localStorage.setItem("myEq",sel.value)}catch(e){};render()});
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+function render(){
+  const pm=pfpc.state==="pm";
+  $("pRcp").textContent=pm?"점검 중":pfpc.recipe;
+  const ps=$("pState");
+  ps.className="pill "+(pm?"pm":pfpc.state==="run"?"ok":"wait");
+  ps.textContent=pm?"점검":pfpc.state==="run"?"가동 중":"투입 대기";
+  $("pMeta").textContent=pm?`마지막 레시피 ${pfpc.recipe}`:pfpc.state==="run"?`현재 Lot 남은 시간 약 ${pfpc.left}분`:"웨이퍼를 바로 받을 수 있음";
+
+  const match=epol.filter(e=>e.recipe===pfpc.recipe);
+  const CAP=3;
+  $("pCap").textContent=pm?"처리 능력 이폴 3대분 · 점검 중":`처리 능력 이폴 3대분 · 맞춰진 이폴 ${match.length}대`;
+  let advice;
+  if(pm) advice="PFPC 점검 중입니다. 끝난 Lot은 넘기지 말고 대기시키세요.";
+  else if(match.length>CAP) advice=`이폴 4대가 모두 <b>${pfpc.recipe}</b>입니다. PFPC는 3대분까지 받으니 1대분은 대기가 생길 수 있습니다. 끝나는 순서대로 넘기세요.`;
+  else if(match.length===CAP) advice=`지금 생산할 레시피는 <b>${pfpc.recipe}</b>입니다. 이폴 3대가 맞춰져 있어 PFPC 처리량이 찼습니다. 남은 1대는 바꾸지 않아도 됩니다.`;
+  else advice=`지금 생산할 레시피는 <b>${pfpc.recipe}</b>입니다. 맞춰진 이폴은 ${match.length}대이고 PFPC는 3대분까지 받으니, ${CAP-match.length}대는 현재 Lot이 끝나면 <b>${pfpc.recipe}</b>로 바꾸면 됩니다.`;
+  $("advice").innerHTML=advice;
+
+  const my=sel.value;
+  $("grid").innerHTML=epol.map(e=>{
+    const same=!pm&&e.recipe===pfpc.recipe;
+    const cls=pm?"pm":same?"ok":"wait";
+    const txt=pm?"PFPC 점검":same?"PFPC와 같음":"PFPC와 다름";
+    const todo=pm?"끝나면 넘기지 말고 대기"
+      : same?"끝나면 바로 PFPC로 넘김"
+      : `끝나면 PFPC 대기 · 다음 Lot은 ${pfpc.recipe}로`;
+    return `<article class="eq ${e.name===my?"mine":""}">
+      <div class="eq-top"><span class="eq-name">${e.name}${e.name===my?' <span class="me">내 장비</span>':""}</span><span class="pill ${cls}">${txt}</span></div>
+      <div class="rcp">${e.recipe}</div>
+      <div class="meta">현재 Lot 남은 시간 약 ${e.left}분</div>
+      <div class="todo">${todo}</div>
+    </article>`}).join("");
+  $("clock").textContent=`가상 데이터 · 갱신 ${new Date().toLocaleTimeString("ko-KR",{hour12:false})}`;
+}
+function step(){
+  if(pfpc.state==="run"){pfpc.left-=Math.ceil(Math.random()*6);if(pfpc.left<=0){pfpc.left=0;pfpc.state="idle"}}
+  else if(pfpc.state==="idle"){
+    if(Math.random()<.15){pfpc.state="pm"}
+    else{if(Math.random()<.35)pfpc.recipe=pick(RECIPES);pfpc.state="run";pfpc.left=12+Math.floor(Math.random()*15)}
+  } else if(Math.random()<.4){pfpc.state="idle"}
+  epol.forEach(e=>{
+    e.left-=Math.ceil(Math.random()*6);
+    if(e.left<=0){e.recipe=Math.random()<.7?pfpc.recipe:pick(RECIPES);e.left=15+Math.floor(Math.random()*15)}
+  });
+  render();
+}
+$("tick").addEventListener("click",step);
+setInterval(step,20000);
+render();
+</script>
+</body>
+</html>
